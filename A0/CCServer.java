@@ -12,14 +12,15 @@ import java.util.Set;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import com.google.common.collect.Sets;
 
 class CCServer {
 
-	private static Map<Integer, HashSet<Integer>> adjacencyMap = Collections.synchronizedMap(new HashMap<Integer, HashSet<Integer>>());;
-	private static Set<List<Integer>> triangles = Collections.synchronizedSet(new HashSet<>());;
-	private static StringBuffer buffer = new StringBuffer();
+	private static Map<Integer, Set<Integer>> adjacencyMap = new ConcurrentHashMap<>();
+	private static Set<List<Integer>> triangles = ConcurrentHashMap.newKeySet();
 	private static String edges[];
 	private static Pair parsedEdges[];
 
@@ -31,15 +32,6 @@ class CCServer {
 		int port = Integer.parseInt(args[0]);
 
 		ServerSocket ssock = new ServerSocket(port);
-		Runtime.getRuntime().addShutdownHook(new Thread(){public void run() {
-			try {
-				ssock.close();
-				System.out.println("The server is shut down!");
-			} 
-			catch (Exception e) {
-				e.printStackTrace(); 
-			}
-		}});
 		System.out.println("listening on port " + port);
 		while(true) {
 		    try {
@@ -53,7 +45,7 @@ class CCServer {
 				System.out.println("received " + payload.length + " bytes of payload data from server");
 				String payloadText = new String(payload, StandardCharsets.UTF_8);
 
-				String output = processGraphData(payloadText, Runtime.getRuntime().availableProcessors());
+				String output = processGraphData(payloadText);
 
 				DataOutputStream dout = new DataOutputStream(sock.getOutputStream());
 				byte[] result = output.getBytes("UTF-8");
@@ -61,50 +53,56 @@ class CCServer {
 				dout.write(result);
 				dout.flush();
 
-				adjacencyMap = Collections.synchronizedMap(new HashMap<Integer, HashSet<Integer>>());;
-				triangles = Collections.synchronizedSet(new HashSet<>());;
-				buffer = new StringBuffer();
+				adjacencyMap = new ConcurrentHashMap<>();
+				triangles = ConcurrentHashMap.newKeySet();
 		    } catch (Exception e) {
 				e.printStackTrace();
 		    }
 		}
     }
 
-    public static String processGraphData(String data, int cores) throws Exception {
-		edges = data.split("\n");
+    public static String processGraphData(String data) throws Exception {
+		long s1 = System.currentTimeMillis();
+		edges = data.split("\\r?\\n");
+		long s2 = System.currentTimeMillis();
 		int numEdges = edges.length;
 		parsedEdges = new Pair[numEdges];
 
-		int batch_size = numEdges/cores;
-		int numThreads = batch_size == 0 ? numEdges : cores;
-		if (batch_size == 0) batch_size++;
+		ExecutorService executor = Executors.newFixedThreadPool(2);
 
-		ExecutorService executor = Executors.newFixedThreadPool(numThreads);
-		List<Callable<Void>> tasks = new ArrayList<>();
-		
 
-		for (int i = 0; i < numThreads; i++) {
-			if (i != numThreads - 1) {
-				tasks.add(new EdgeParser(i*batch_size, i*batch_size + batch_size));
-			} else {
-				tasks.add(new EdgeParser(i*batch_size, numEdges - 1));
-			}
-		}
+		List<Callable<Void>> tasks = new ArrayList<>(2);
+
+		tasks.add(0, new EdgeParser(0, numEdges/2));
+		tasks.add(1, new EdgeParser(numEdges/2 + 1, numEdges - 1));
 
 		executor.invokeAll(tasks);
 
-		for (int i = 0; i < numThreads; i++) {
-			if (i != numThreads - 1) {
-				tasks.add(new TriangleDetector(i*batch_size, i*batch_size + batch_size));
-			} else {
-				tasks.add(new TriangleDetector(i*batch_size, numEdges - 1));
-			}
-		}
+		long s3 = System.currentTimeMillis();
+
+		tasks = new ArrayList<>();
+		tasks.add(new TriangleDetector(0, numEdges/2));
+		tasks.add(new TriangleDetector(numEdges/2 + 1, numEdges - 1));
 
 		executor.invokeAll(tasks);
 		executor.shutdown();
 
-		return buffer.toString();
+		long s4 = System.currentTimeMillis();
+
+		StringBuilder sb = new StringBuilder();
+
+		for (List<Integer> triangle: triangles) {
+			sb.append(String.format("%d %d %d\n", triangle.get(0), triangle.get(1), triangle.get(2)));
+		}
+
+		long s5 = System.currentTimeMillis();
+
+		System.out.println("Splitting lines " + (s2-s1));
+		System.out.println("Parsing Edges " + (s3-s2));
+		System.out.println("Finding Triangles " + (s4-s3));
+		System.out.println("Building String " + (s5-s4));
+
+		return sb.toString();
 	}
 
 	static class Pair {
@@ -156,19 +154,11 @@ class CCServer {
 				Set<Integer> uNeighbor = adjacencyMap.get(pair.u);
 				Set<Integer> vNeighbor = adjacencyMap.get(pair.v);
 
-				Set<Integer> common = new HashSet<>();
-				uNeighbor.forEach(nbr -> {
-					if (vNeighbor.contains(nbr)) {
-						common.add(nbr);
-					}
-				});
-
-				common.forEach(val -> {
+				Sets.intersection(uNeighbor, vNeighbor).forEach(val -> {
 					List<Integer> list = Arrays.asList(pair.u, pair.v, val);
 					Collections.sort(list);
 					if (!triangles.contains(list)) {
 						triangles.add(list);
-						buffer.append(list.get(0) + " " + list.get(1) + " " + list.get(2) + "\n");
 					}
 				});
 			}

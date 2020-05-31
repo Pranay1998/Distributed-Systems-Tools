@@ -18,6 +18,7 @@ java CCClient $SERVER_HOST $SERVER_PORT $SAMPLE_INPUT $SERVER_OUTPUT
 
 echo --- Comparing server\'s output against sample output
 sort -o $SERVER_OUTPUT $SERVER_OUTPUT
+sort -o $SAMPLE_OUTPUT $SAMPLE_OUTPUT
 diff $SERVER_OUTPUT $SAMPLE_OUTPUT
 if [ $? -eq 0 ]; then
     echo Outputs match

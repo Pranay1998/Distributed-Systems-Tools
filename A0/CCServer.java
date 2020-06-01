@@ -62,6 +62,7 @@ class CCServer {
     }
 
     public static String processGraphData(String data) throws Exception {
+		if (data.equals("")) return "";
 		long s1 = System.currentTimeMillis();
 		edges = data.split("\\r?\\n");
 		long s2 = System.currentTimeMillis();
@@ -69,8 +70,6 @@ class CCServer {
 		parsedEdges = new Pair[numEdges];
 
 		ExecutorService executor = Executors.newFixedThreadPool(2);
-
-
 		List<Callable<Void>> tasks = new ArrayList<>(2);
 
 		tasks.add(0, new EdgeParser(0, numEdges/2));
@@ -129,8 +128,12 @@ class CCServer {
 			for (int i  = start; i <= end; i++) {
 				String[] values = edges[i].split(" ");
 				parsedEdges[i] = new Pair(Integer.valueOf(values[0]), Integer.valueOf(values[1]));
-				adjacencyMap.putIfAbsent(parsedEdges[i].u, new HashSet<>());
-				adjacencyMap.putIfAbsent(parsedEdges[i].v, new HashSet<>());
+				if (!adjacencyMap.containsKey(parsedEdges[i].u)) {
+					adjacencyMap.put(parsedEdges[i].u, new HashSet<>());
+				}
+				if (!adjacencyMap.containsKey(parsedEdges[i].v)) {
+					adjacencyMap.put(parsedEdges[i].v, new HashSet<>());
+				}
 				adjacencyMap.get(parsedEdges[i].u).add(parsedEdges[i].v);
 				adjacencyMap.get(parsedEdges[i].v).add(parsedEdges[i].u);
 			}

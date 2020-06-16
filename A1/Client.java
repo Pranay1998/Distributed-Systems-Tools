@@ -32,11 +32,11 @@ public class Client {
 	    hash.set(0, "$2a$14$reBHJvwbb0UWqJHLyPTVF.6Ld5sFRirZx/bXMeMmeurJledKYdZmG");
 	    System.out.println("Negative check: " + client.checkPassword(password, hash));
 	    try {
-		hash.set(0, "too short");
-		List<Boolean> rets = client.checkPassword(password, hash);
-		System.out.println("Exception check: no exception thrown");
+			hash.set(0, "too short");
+			List<Boolean> rets = client.checkPassword(password, hash);
+			System.out.println("Exception check: no exception thrown");
 	    } catch (Exception e) {
-		System.out.println("Exception check: exception thrown");
+			e.printStackTrace();
 	    }
 
 	    transport.close();

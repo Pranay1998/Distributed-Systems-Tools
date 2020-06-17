@@ -9,39 +9,59 @@ import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TFramedTransport;
 import org.apache.thrift.transport.TTransportFactory;
 
+import java.lang.Runnable;
+
 public class Client {
     public static void main(String [] args) {
-	if (args.length != 3) {
-	    System.err.println("Usage: java Client FE_host FE_port password");
-	    System.exit(-1);
+		if (args.length != 3) {
+		    System.err.println("Usage: java Client FE_host FE_port password");
+		    System.exit(-1);
+		}
+
+		Runnable run = new Runnable() {
+			@Override
+			public void run() {
+				try {
+					TSocket sock = new TSocket(args[0], Integer.parseInt(args[1]));
+					TTransport transport = new TFramedTransport(sock);
+					TProtocol protocol = new TBinaryProtocol(transport);
+					BcryptService.Client client = new BcryptService.Client(protocol);
+					transport.open();
+
+					
+					List<String> password = new ArrayList<>();
+
+					for (int i = 0; i < 50; i++) {
+						password.add("Test String");
+					}
+
+					List<String> hash = client.hashPassword(password, (short)10);
+					List<Boolean> check = client.checkPassword(password, hash);
+					
+					transport.close();
+				}
+				catch (TException e) {
+					e.printStackTrace();
+				}
+			}
+		};
+		
+		Thread thread1 = new Thread(run);
+		Thread thread2 = new Thread(run);
+
+		long start = System.currentTimeMillis();
+		thread1.start();
+		thread2.start();
+		try {
+			thread1.join();
+			thread2.join();
+
+		}
+		catch(Exception e) {
+			e.printStackTrace();
+		} 
+		long end = System.currentTimeMillis();
+
+		System.out.println("Time taken : " + (end-start));
 	}
-
-	try {
-	    TSocket sock = new TSocket(args[0], Integer.parseInt(args[1]));
-	    TTransport transport = new TFramedTransport(sock);
-	    TProtocol protocol = new TBinaryProtocol(transport);
-	    BcryptService.Client client = new BcryptService.Client(protocol);
-	    transport.open();
-
-	    List<String> password = new ArrayList<>();
-	    password.add(args[2]);
-	    List<String> hash = client.hashPassword(password, (short)10);
-	    System.out.println("Password: " + password.get(0));
-	    System.out.println("Hash: " + hash.get(0));
-	    System.out.println("Positive check: " + client.checkPassword(password, hash));
-	    hash.set(0, "$2a$14$reBHJvwbb0UWqJHLyPTVF.6Ld5sFRirZx/bXMeMmeurJledKYdZmG");
-	    System.out.println("Negative check: " + client.checkPassword(password, hash));
-	    try {
-		hash.set(0, "too short");
-		List<Boolean> rets = client.checkPassword(password, hash);
-		System.out.println("Exception check: no exception thrown");
-	    } catch (Exception e) {
-		System.out.println("Exception check: exception thrown");
-	    }
-
-	    transport.close();
-	} catch (TException x) {
-	    x.printStackTrace();
-	} 
-    }
 }

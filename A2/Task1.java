@@ -37,7 +37,6 @@ public class Task1 {
           } else if (t == max) {
             sb.append(',');
             sb.append(i);
-            
           }
         }
       }

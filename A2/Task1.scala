@@ -6,11 +6,29 @@ object Task1 {
     val conf = new SparkConf().setAppName("Task 1")
     val sc = new SparkContext(conf)
 
-    val textFile = sc.textFile(args(0))
+    sc.textFile(args(0)).map(x => {
+    	val line = x.split(',')
+    	var max = '0'
+    	var sb = new StringBuilder
 
-    // modify this code
-    val output = textFile.map(x => x);
-    
-    output.saveAsTextFile(args(1))
+    	for (i <- 1 until line.length) {
+    		if (line(i).length() > 0) {
+    			val t = line(i).charAt(0)
+    			if (t > max) {
+    				max = t
+    				sb.setLength(0)
+    				sb.append(i)
+    			}
+    			else if (t == max) {
+    				sb.append(',')
+    				sb.append(i)
+
+    			}
+    		}
+    	}
+
+    	line(0) + ',' + sb.toString()
+
+    }).saveAsTextFile(args(1))
   }
 }

@@ -6,7 +6,6 @@ object SparkWC {
     val sc = new SparkContext(conf)
 
     val textFile = sc.textFile(args(0))
-
     val counts = textFile.flatMap(line => line.split(" "))
                  .map(word => (word, 1 ))
                  .reduceByKey(_ + _)

@@ -12,25 +12,25 @@ export HADOOP_CONF_DIR=$HADOOP_HOME/etc/hadoop/
 export CLASSPATH=`$HADOOP_HOME/bin/hadoop classpath`
 
 echo --- Deleting
-rm Task1.jar
-rm Task1*.class
+rm Task2.jar
+rm Task2*.class
 
 echo --- Compiling
-$JAVA_HOME/bin/javac Task1.java
+$JAVA_HOME/bin/javac Task2.java
 if [ $? -ne 0 ]; then
     exit
 fi
 
 echo --- Jarring
-$JAVA_HOME/bin/jar -cf Task1.jar Task1*.class
+$JAVA_HOME/bin/jar -cf Task2.jar Task2*.class
 
 echo --- Running
-INPUT=/a2_inputs/in5.txt
+INPUT=/a2_inputs/in4.txt
 OUTPUT=/user/${USER}/a2_starter_code_output_hadoop/
 
 $HADOOP_HOME/bin/hdfs dfs -rm -R $OUTPUT
 #$HADOOP_HOME/bin/hdfs dfs -copyFromLocal sample_input/smalldata.txt /user/${USER}/
-time $HADOOP_HOME/bin/yarn jar Task1.jar Task1 -D mapreduce.map.java.opts=-Xmx4g $INPUT $OUTPUT
+time $HADOOP_HOME/bin/yarn jar Task2.jar Task2 -D mapreduce.map.java.opts=-Xmx4g $INPUT $OUTPUT
 
 $HADOOP_HOME/bin/hdfs dfs -ls $OUTPUT
 $HADOOP_HOME/bin/hdfs dfs -cat $OUTPUT/*

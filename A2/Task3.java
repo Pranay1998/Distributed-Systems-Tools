@@ -21,13 +21,23 @@ public class Task3 {
     private final static NullWritable nw = NullWritable.get();
       
     public void map(Object key, Text value, Context context) throws IOException, InterruptedException {
-      String[] tokens = value.toString().split(",", -1);
+      String val = value.toString();
 
-      for (int i = 1; i < tokens.length; i++) {
-        if (tokens[i].length() > 0) {
-          user.set(i);
-          rating.set(tokens[i].length > 0 ? 1 : 0);
-          emit(user, rating);
+      int user_index = 1;
+      boolean prev = false;
+      for (int i = val.indexOf(',') + 1; i < val.length(); i++) {
+        char c = val.charAt(i);
+        boolean comma = (c == ',');
+
+        if (!comma || prev) {
+          user.set(user_index);
+          rating.set(comma ? 0 : 1);
+          context.write(user, rating);
+        }
+
+        if (comma) {
+          user_index++;
+          prev = true;
         }
       }
     }
@@ -38,9 +48,10 @@ public class Task3 {
     private final static NullWritable nw = NullWritable.get();
 
     public void reduce(IntWritable user, Iterable<IntWritable> ratings, Context context) throws IOException, InterruptedException {
+      //At what length is multithreading worth it?
       int sum = 0;
-      for (IntWritable val : values) {
-        sum += val.get();
+      for (IntWritable rating : ratings) {
+        sum += rating.get();
       }
       result.set(sum);
       context.write(user, result);
@@ -58,12 +69,11 @@ public class Task3 {
       System.exit(2);
     }
 
-    Job job = Job.getInstance(conf, "Task2");
-    job.setJarByClass(Task2.class);
+    Job job = Job.getInstance(conf, "Task3");
+    job.setJarByClass(Task3.class);
     
     job.setMapperClass(UserReviewMapper.class);
     job.setReducerClass(ReviewSumReducer.class);
-    job.setNumReduceTasks(1);
 
     job.setMapOutputKeyClass(IntWritable.class);
     job.setMapOutputValueClass(IntWritable.class);

@@ -38,6 +38,7 @@ public class Task2 {
     private final static NullWritable nw = NullWritable.get();
 
     public void reduce(NullWritable nw, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException {
+      //At what length is multithreading worth it?
       int sum = 0;
       for (IntWritable val : values) {
         sum += val.get();

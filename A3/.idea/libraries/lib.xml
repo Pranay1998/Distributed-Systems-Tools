@@ -1,0 +1,24 @@
+<component name="libraryTable">
+  <library name="lib">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/a3_starter/lib/servlet-api-2.5.jar!/" />
+      <root url="jar://$PROJECT_DIR$/a3_starter/lib/httpclient-4.5.6.jar!/" />
+      <root url="jar://$PROJECT_DIR$/a3_starter/lib/commons-logging-1.2.jar!/" />
+      <root url="jar://$PROJECT_DIR$/a3_starter/lib/commons-codec-1.10.jar!/" />
+      <root url="jar://$PROJECT_DIR$/a3_starter/lib/curator-client-4.2.0.jar!/" />
+      <root url="jar://$PROJECT_DIR$/a3_starter/lib/curator-recipes-4.2.0.jar!/" />
+      <root url="jar://$PROJECT_DIR$/a3_starter/lib/httpcore-4.4.10.jar!/" />
+      <root url="jar://$PROJECT_DIR$/a3_starter/lib/slf4j-api-1.7.25.jar!/" />
+      <root url="jar://$PROJECT_DIR$/a3_starter/lib/guava-29.0-jre.jar!/" />
+      <root url="jar://$PROJECT_DIR$/a3_starter/lib/libthrift-0.13.0.jar!/" />
+      <root url="jar://$PROJECT_DIR$/a3_starter/lib/log4j-1.2.17.jar!/" />
+      <root url="jar://$PROJECT_DIR$/a3_starter/lib/curator-framework-4.2.0.jar!/" />
+      <root url="jar://$PROJECT_DIR$/a3_starter/lib/javax.annotation-api-1.3.2.jar!/" />
+      <root url="jar://$PROJECT_DIR$/a3_starter/lib/zookeeper-3.4.13.jar!/" />
+      <root url="jar://$PROJECT_DIR$/a3_starter/lib/slf4j-log4j12-1.7.25.jar!/" />
+      <root url="jar://$PROJECT_DIR$/a3_starter/lib/WatCA-1.0-SNAPSHOT.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

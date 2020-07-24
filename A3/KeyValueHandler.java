@@ -16,6 +16,8 @@ import org.apache.curator.retry.*;
 import org.apache.curator.framework.*;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 
 public class KeyValueHandler implements KeyValueService.Iface, CuratorWatcher {
@@ -29,7 +31,7 @@ public class KeyValueHandler implements KeyValueService.Iface, CuratorWatcher {
     private final Logger log = StorageNode.log;
     volatile boolean solo = true;
     private static final AtomicInteger sequence = new AtomicInteger(0);
-    private volatile boolean backupPreviously = false;
+    static ReadWriteLock rwLock = new ReentrantReadWriteLock(true);
 
     private static final int CAPACITY = 8;
 
@@ -50,21 +52,11 @@ public class KeyValueHandler implements KeyValueService.Iface, CuratorWatcher {
 
     public String get(String key) throws org.apache.thrift.TException {
         if (role.equals(Role.PRIMARY)) {
-            while (true) {
-                if (!backupPreviously) {
-                    String ret = myMap.get(key);
-                    if (ret == null)
-                        return "";
-                    else
-                        return ret;
-                } else {
-                    try {
-                        Thread.sleep(25);
-                    } catch (Exception e) {
-                        log.error(e.getMessage());
-                    }
-                }
-            }
+            String ret = myMap.get(key);
+            if (ret == null)
+                return "";
+            else
+                return ret;
         }
         else {
                 throw new TException("Server is not a primary node");
@@ -73,34 +65,24 @@ public class KeyValueHandler implements KeyValueService.Iface, CuratorWatcher {
 
     public void put(String key, String value) throws org.apache.thrift.TException {
         if (role.equals(Role.PRIMARY)) {
-            while (true) {
-                if (!backupPreviously) {
-                    myMap.put(key, value);
-                    if (!solo) {
-                        ClientWrapper client = null;
-                        try {
-                            client = backupClientPool.poll();
-                            if (client != null) {
-                                client.client.copy(key, value, sequence.addAndGet(1));
-                                backupClientPool.put(client);
-                            }
-                        } catch (Exception e) {
-                            log.error(e);
-                        }
+            rwLock.readLock().lock();
+            myMap.put(key, value);
+            if (!solo) {
+                ClientWrapper client = null;
+                try {
+                    client = backupClientPool.poll();
+                    if (client != null) {
+                        client.client.copy(key, value, sequence.addAndGet(1));
+                        backupClientPool.put(client);
                     }
-                    return;
-                } else {
-                    try {
-                        Thread.sleep(25);
-                    } catch (Exception e) {
-                        log.error(e.getMessage());
-                    }
+                } catch (Exception e) {
+                    log.error(e);
                 }
             }
+            rwLock.readLock().unlock();
         } else {
             throw new TException("Server is not a primary node");
         }
-
     }
 
     public void copy(String key, String value, int seq) {
@@ -117,7 +99,6 @@ public class KeyValueHandler implements KeyValueService.Iface, CuratorWatcher {
 
     public void addToMap(Map<String, String> values) {
         myMap.putAll(values);
-        backupPreviously = false;
     }
 
     ClientWrapper getThriftClient(String host, int port) {
@@ -151,7 +132,6 @@ public class KeyValueHandler implements KeyValueService.Iface, CuratorWatcher {
                 log.info("Primary Server");
             } else {
                 role = Role.BACKUP;
-                backupPreviously = true;
                 log.info("Backup Server");
             }
         } else {
@@ -195,7 +175,9 @@ public class KeyValueHandler implements KeyValueService.Iface, CuratorWatcher {
                     try {
                         ClientWrapper client = null;
                         client = backupClientPool.take();
+                        rwLock.writeLock().lock();
                         client.client.addToMap(myMap);
+                        rwLock.writeLock().unlock();
                         backupClientPool.put(client);
 
                     } catch (InterruptedException e) {

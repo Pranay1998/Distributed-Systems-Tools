@@ -175,7 +175,7 @@ public class KeyValueHandler implements KeyValueService.Iface, CuratorWatcher {
                     try {
                         ClientWrapper client = null;
                         client = backupClientPool.take();
-                        rwLock.writeLock().lock();
+                        rwLock.writeLock().lockInterruptibly();
                         client.client.addToMap(myMap);
                         rwLock.writeLock().unlock();
                         backupClientPool.put(client);

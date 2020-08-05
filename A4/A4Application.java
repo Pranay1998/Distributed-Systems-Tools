@@ -43,27 +43,27 @@ public class A4Application {
 		KStream<String, String> student_info = builder.stream(studentTopic);
 		KStream<String, String> room_occupancy = builder.stream(classroomTopic);
 
-		KTable<String, String> studentToClassroom = student_info.groupByKey().reduce((x,y) -> y);
-		KTable<String, Long> classroomToOccupancy = studentToClassroom.groupBy((x,y) -> new KeyValue<>(y, x)).count();
 
-		KTable<String, String> classroomToCapacity = room_occupancy.groupByKey().reduce((x,y) -> y);
+		KTable<String, Long> classroom_current = student_info.groupByKey().reduce((key,value) -> value)
+				.groupBy((student,room) -> new KeyValue<>(room, student)).count();
+		KTable<String, String> classroom_capacity = room_occupancy.groupByKey().reduce((key,value) -> value);
 
-		KTable<String, String> classroomStatus = classroomToOccupancy.join(classroomToCapacity, (x,y) -> {
-			return x.toString() + "," + y.toString();
+		KTable<String, String> classroomStatus = classroom_current.join(classroom_capacity, (current,capacity) -> {
+			return current + "," + capacity;
 		});
 
-		KTable<String, String> output = classroomStatus.toStream().groupByKey().aggregate(() -> null, (x,y,z) -> {
-			int a = Integer.parseInt(y.split(",")[0]);
-			int b = Integer.parseInt(y.split(",")[1]);
+		KTable<String, String> output = classroomStatus.toStream().groupByKey().aggregate(() -> null, (k,curr,prev) -> {
+			int curr_number = Integer.parseInt(curr.split(",")[0]);
+			int curr_total = Integer.parseInt(curr.split(",")[1]);
 
-			if (a > b) {
-				return String.valueOf(a);
+			if (curr_number > curr_total) {
+				return String.valueOf(curr_number);
 			} else {
 				try {
-					if (z == null) {
+					if (prev == null) {
 						return null;
 					}
-					Integer.parseInt(z);
+					Integer.parseInt(prev);
 					return "OK";
 				} catch (Exception ex) {
 					return null;
@@ -71,13 +71,9 @@ public class A4Application {
 			}
 		});
 
-		Serde<String> stringSerde = Serdes.String();
-
-		output.toStream().filter((key, value) -> value != null).to(outputTopic, Produced.with(stringSerde, stringSerde));
-
+		output.toStream().filter((key, value) -> value != null).to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
 		KafkaStreams streams = new KafkaStreams(builder.build(), props);
 		streams.start();
-
 		Runtime.getRuntime().addShutdownHook(new Thread(streams::close));
     }
 }

@@ -43,21 +43,17 @@ public class A4Application {
 		KStream<String, String> student_info = builder.stream(studentTopic);
 		KStream<String, String> room_occupancy = builder.stream(classroomTopic);
 
-
 		KTable<String, Long> classroom_current = student_info.groupByKey().reduce((key,value) -> value)
 				.groupBy((student,room) -> new KeyValue<>(room, student)).count();
 		KTable<String, String> classroom_capacity = room_occupancy.groupByKey().reduce((key,value) -> value);
 
 		KTable<String, String> classroomStatus = classroom_current.join(classroom_capacity, (current,capacity) -> {
-			return current + "," + capacity;
+			return current + ":" + capacity;
 		});
 
 		KTable<String, String> output = classroomStatus.toStream().groupByKey().aggregate(() -> null, (k,curr,prev) -> {
-			int curr_number = Integer.parseInt(curr.split(",")[0]);
-			int curr_total = Integer.parseInt(curr.split(",")[1]);
-
-			if (curr_number > curr_total) {
-				return String.valueOf(curr_number);
+			if (Integer.parseInt(curr.split(":")[0]) > Integer.parseInt(curr.split(":")[1])) {
+				return String.valueOf(Integer.parseInt(curr.split(":")[0]));
 			} else {
 				try {
 					if (prev == null) {
